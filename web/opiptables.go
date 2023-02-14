@@ -1,9 +1,7 @@
 package web
 
 import (
-	"BYR_Iptables/iptables"
 	"github.com/gin-gonic/gin"
-	"net"
 	"net/http"
 )
 
@@ -12,28 +10,31 @@ const (
 	SNAT = "snat"
 )
 
-// addDnat 3个参数 ip1 和 ip2 以及 规则类型 type: dnat/snat
-func add(c *gin.Context) {
-	// TODO: 鉴权
-	ip1Str, b1 := c.GetPostForm("ip1")
-	ip2Str, b2 := c.GetPostForm("ip2")
-	nat, _ := c.GetPostForm("type")
-	if !(b1 && b2) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ip format ..."})
+// PostAddRule 2个参数 ip1 和 ip2, ip1
+func PostAddRule() func(c *gin.Context){
+	return func(c *gin.Context) {
+		ip1, b1 := c.GetPostForm("ip1")
+		ip2, b2 := c.GetPostForm("ip2")
+		if !(b1 && b2) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ip format ..."})
+		}
+
+		//errDnat := iptables.Dnat(ip1,ip2)
+		//errSnat := iptables.Snat(ip2,ip1)
+		errDnat := dummyNat(ip1,ip2)
+		errSnat := dummyNat(ip1,ip2)
+		if errDnat != nil || errSnat != nil {
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+				"error": "insert failed...",
+				"errDnat":errDnat.Error(),
+				"errSnat":errSnat.Error(),
+			})
+		}
+		c.JSON(http.StatusOK,gin.H{"ok":"add ok"})
 	}
-	ip1 := net.ParseIP(ip1Str).To4()
-	ip2 := net.ParseIP(ip2Str).To4()
-	if ip1 == nil || ip2 == nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Don't support Ipv6 now ..."})
-	}
-	var err error
-	switch nat {
-	case DNAT:
-		err = iptables.Dnat(ip1, ip2)
-	case SNAT:
-		err = iptables.Snat(ip1, ip2)
-	}
-	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "insert failed: " + err.Error()})
-	}
+}
+
+// use for test without iptables cmd
+func dummyNat(ip1,ip2 string) error {
+	return nil
 }

@@ -18,10 +18,10 @@ const (
 )
 
 type User struct {
-	Id        int           `json:"id" gorm:"column:id;PRIMARY_KEY"`
-	UserName  string        `json:"userName" gorm:"column:username"`
-	PassWord  string        `json:"passWord" gorm:"column:password"`
-	Privilege UserPrivilege `json:"privilege" gorm:"column:privilege"`
+	Id        int           `json:"id" gorm:"column:id;PRIMARY_KEY" "`
+	UserName  string        `json:"userName" form:"userName" gorm:"column:username"`
+	PassWord  string        `json:"passWord" form:"passWord" gorm:"column:password"`
+	Privilege UserPrivilege `json:"privilege" form:"privilege"  gorm:"column:privilege"`
 }
 
 func (u User) TableName() string {
@@ -70,8 +70,8 @@ var (
 	DSNDbArg  string = "charset=utf8mb4&parseTime=True&loc=Local"
 )
 
-// initDB
-func initDB() error {
+// InitDB 初始化数据库
+func InitDB() error {
 	dsn := fmt.Sprintf(DSNFormat, DSNUser, DSNPass, DSNProc, DSNAddr, DSNDbName, DSNDbArg)
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	DB = db
@@ -79,37 +79,53 @@ func initDB() error {
 }
 
 // insertUser 返回 user的id
-func insertUser(user User) int {
+func insertUser(user *User) int {
 	var err error
 	user.PassWord, err = encodePass(user.PassWord)
+	length := len(user.PassWord)
+	fmt.Println(length)
 	if err != nil {
 		return -1
 	}
 	DB.Create(&user)
+	fmt.Println(user.UserName)
+	fmt.Println(user.UserName)
+	fmt.Println(user.UserName)
 	return user.Id
 }
 
 // checkUser 检查用户是否存在，并检查密码是否正确
-func checkUser(user User) (bool, string, UserPrivilege) {
+func checkUser(user User) User {
 	internalUser := getUserByName(user.UserName)
 	if internalUser == (User{}) {
-		return false, fmt.Sprintf("不存在用户名为: %s 的用户", user.UserName), NORMAL
+		return User{}
 	}
 	if !comparePass(user.PassWord, internalUser.PassWord) {
-		return false, fmt.Sprintf("密码错误"), NORMAL
+		return User{}
 	}
-	return true, "", internalUser.Privilege
+	return internalUser
 }
 
 // getUserByName 按照名字查找user, 如果没找到就返回空user
 func getUserByName(name string) User {
 	var user User
-	err := DB.Where("username == ?", name).Take(&user).Error
+	err := DB.Where("username = ?", name).Take(&user).Error
 	if err != nil {
 		return User{}
 	}
 	return user
 }
+
+// getUserById 按照id查找user, 如果没找到就返回空user
+func getUserById(id int) User {
+	var user User
+	err := DB.Where("id = ?", id).Take(&user).Error
+	if err != nil {
+		return User{}
+	}
+	return user
+}
+
 
 // 下面是一些辅助函数
 // encodePass 用bcrypt加密下密码
@@ -125,5 +141,5 @@ func encodePass(pass string) (string, error) {
 // str1 是前台传来的， str2 是数据库中的
 func comparePass(str1, str2 string) bool {
 	err := bcrypt.CompareHashAndPassword([]byte(str2), []byte(str1))
-	return err != nil
+	return err == nil
 }
