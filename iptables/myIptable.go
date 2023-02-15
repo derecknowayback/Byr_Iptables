@@ -2,10 +2,11 @@ package iptables
 
 import (
 	"github.com/coreos/go-iptables/iptables"
+	"strings"
 )
 
 const (
-	TABLE     = "NAT"
+	TABLE     = "nat"
 	DnatChain = "PREROUTING"
 	SnatChain = "POSTROUTING"
 )
@@ -15,15 +16,28 @@ const (
 
 var Iptables *iptables.IPTables
 
+type BadIpFormat struct {
+	errMsg string
+}
+
+func (err BadIpFormat) Error() string{
+	return err.errMsg
+}
+
 // InitIptables 初始化iptables
 func InitIptables() error {
 	ip4t, err := iptables.New() // ipv4版本, timeout 0
 	Iptables = ip4t
+
 	return err
 }
 
+
 func Dnat(ip1, ip2 string) error {
-	err := Iptables.Append(TABLE, DnatChain, getDnatArgs(ip1, ip2)...)
+	// iptables -t nat -A PREROUTING -d 10.11.0.0/16 -j DNAT --to-destination 192.168.0.0/16
+	// 需要我们去除 Ip2后缀
+	ip2AndMask := strings.Split(ip2,"/")
+	err := Iptables.Append(TABLE, DnatChain, getDnatArgs(ip1, ip2AndMask[0])...)
 	return err
 }
 
@@ -46,7 +60,10 @@ func getDnatArgs(ip1, ip2 string) []string {
 }
 
 func Snat(ip1, ip2 string) error {
-	err := Iptables.Append(TABLE, SnatChain, getSnatArgs(ip1, ip2)...)
+	// iptables -t nat -A POSTROUTING -s 192.168.0.0/16 -j SNAT --to-source 10.11.0.0/16
+	// 去除ip2后缀
+	ip2AndMask := strings.Split(ip2,"/")
+	err := Iptables.Append(TABLE, SnatChain, getSnatArgs(ip1, ip2AndMask[0])...)
 	return err
 }
 
@@ -67,3 +84,6 @@ func getSnatArgs(ip1, ip2 string) []string {
 	}
 	return args
 }
+
+
+

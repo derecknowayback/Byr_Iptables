@@ -82,15 +82,10 @@ func InitDB() error {
 func insertUser(user *User) int {
 	var err error
 	user.PassWord, err = encodePass(user.PassWord)
-	length := len(user.PassWord)
-	fmt.Println(length)
 	if err != nil {
 		return -1
 	}
 	DB.Create(&user)
-	fmt.Println(user.UserName)
-	fmt.Println(user.UserName)
-	fmt.Println(user.UserName)
 	return user.Id
 }
 
